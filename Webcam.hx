@@ -41,15 +41,17 @@ class Webcam {
     }
 
     function onEvent(e) {
-        if( e.info.code == "NetConnection.Connect.Success" ) {
-            this.ns = new flash.net.NetStream(nc);
-            this.ns.addEventListener(flash.events.NetStatusEvent.NET_STATUS, onEvent);
-            this.ns.publish(this.file,this.share);
-        } else if (e.info.code == "NetStream.Publish.Start") {
-            this.ns.attachCamera(this.cam);
-            this.ns.attachAudio(this.mic);
-            //this.ns.bufferTime = 1;
-        }
+      flash.external.ExternalInterface.call('__webcam', e.info.code, e.info);
+
+      if( e.info.code == "NetConnection.Connect.Success" ) {
+          this.ns = new flash.net.NetStream(nc);
+          this.ns.addEventListener(flash.events.NetStatusEvent.NET_STATUS, onEvent);
+          this.ns.publish(this.file,this.share);
+      } else if (e.info.code == "NetStream.Publish.Start") {
+          this.ns.attachCamera(this.cam);
+          this.ns.attachAudio(this.mic);
+          //this.ns.bufferTime = 1;
+      }
     }
 
     public function doStop() {
