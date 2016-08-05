@@ -23,35 +23,66 @@ class Webcam {
     var file : String;
     var share : String;
 
-    public function new(host, file,?share, token, width, height, fps) {
+    public function new(host, file,?share, token, width, height, fps: Int) {
         this.file = file;
         this.share = share;
         this.cam = flash.media.Camera.getCamera();
         if( this.cam == null )
             throw "Webcam not found";
+
+        this.cam.addEventListener(flash.events.StatusEvent.STATUS, onStatusEvent);
+        this.cam.addEventListener(flash.events.ActivityEvent.ACTIVITY, onStatusEvent);
+        this.cam.setQuality(0, 100);
         this.cam.setMode(width, height, fps, true);
+        this.cam.setKeyFrameInterval(fps * 2);
+
+        var video = new flash.media.Video(this.cam.width, this.cam.height);
+        video.attachCamera(cam);
+        flash.Lib.current.addChild(video);
+
         this.mic = flash.media.Microphone.getMicrophone();
-        this.nc = new flash.net.NetConnection();
-        this.nc.addEventListener(flash.events.NetStatusEvent.NET_STATUS,onEvent);
-        this.nc.connect(host, token);
+        this.mic.addEventListener(flash.events.StatusEvent.STATUS, onStatusEvent);
+        this.mic.addEventListener(flash.events.ActivityEvent.ACTIVITY, onStatusEvent);
+        this.mic.rate = 22;
+        this.mic.setSilenceLevel(0);
+
+        flash.external.ExternalInterface.addCallback("connect", connect);
+        flash.external.ExternalInterface.call('__webcam', 'init');
+    }
+
+    public function connect(host: String, token: String) {
+      flash.external.ExternalInterface.call('__webcam', 'connecting');
+
+      this.file = token;
+      this.nc = new flash.net.NetConnection();
+      this.nc.addEventListener(flash.events.NetStatusEvent.NET_STATUS, onNetStatusEvent);
+      this.nc.connect(host, token);
+
     }
 
     public function getCam() {
         return this.cam;
     }
 
-    function onEvent(e) {
+    function onNetStatusEvent(e) {
       flash.external.ExternalInterface.call('__webcam', e.info.code, e.info);
 
       if( e.info.code == "NetConnection.Connect.Success" ) {
           this.ns = new flash.net.NetStream(nc);
-          this.ns.addEventListener(flash.events.NetStatusEvent.NET_STATUS, onEvent);
-          this.ns.publish(this.file,this.share);
+          this.ns.addEventListener(flash.events.NetStatusEvent.NET_STATUS, onNetStatusEvent);
+          this.ns.publish(this.file, this.share);
       } else if (e.info.code == "NetStream.Publish.Start") {
           this.ns.attachCamera(this.cam);
           this.ns.attachAudio(this.mic);
-          //this.ns.bufferTime = 1;
+          this.ns.bufferTime = 0;
+          var vs = new flash.media.VideoStreamSettings();
+          vs.setQuality(0, 100);
+          this.ns.videoStreamSettings = vs;
       }
+    }
+
+    function onStatusEvent(e) {
+      flash.external.ExternalInterface.call('__webcam', e.code, e.target);
     }
 
     public function doStop() {

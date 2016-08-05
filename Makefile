@@ -1,5 +1,5 @@
 debug:
-	haxe -debug webcam.hxml
+	haxe -debug -swf-version 11 webcam.hxml
 
 release:
-	haxe webcam.hxml
+	haxe -swf-version 11 webcam.hxml
